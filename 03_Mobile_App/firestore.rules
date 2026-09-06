@@ -1,0 +1,79 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function getAdminData() {
+      return get(/databases/$(database)/documents/admins/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function isOwner() {
+      return isAdmin() && getAdminData().role == 'OWNER';
+    }
+
+    function hasPermission(permission) {
+      return isAdmin() && (getAdminData().role == 'OWNER' || permission in getAdminData().permissions);
+    }
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (request.auth.uid == userId || hasPermission('MANAGE_USERS'));
+    }
+
+    match /active_drivers/{driverId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (request.auth.uid == driverId || hasPermission('MANAGE_PROVIDERS'));
+    }
+
+    match /drivers/{driverId} {
+      allow read: if isAuthenticated() && (request.auth.uid == driverId || hasPermission('MANAGE_PROVIDERS'));
+      allow write: if isAuthenticated() && (request.auth.uid == driverId || hasPermission('MANAGE_PROVIDERS'));
+    }
+
+    match /rides/{rideId} {
+      // Les clients/chauffeurs peuvent lire leur propre course, ou les admins
+      allow read: if isAuthenticated() && (
+        resource.data.traveler.id == request.auth.uid || 
+        (resource.data.keys().hasAll(['driver']) && resource.data.driver.id == request.auth.uid) || 
+        resource.data.status == 'REQUESTED' ||
+        hasPermission('VIEW_REQUESTS')
+      );
+      
+      allow create: if isAuthenticated() && request.resource.data.traveler.id == request.auth.uid;
+      
+      allow update: if isAuthenticated() && (
+        resource.data.traveler.id == request.auth.uid ||
+        (request.resource.data.keys().hasAll(['driver']) && request.resource.data.driver.id == request.auth.uid) ||
+        hasPermission('MANAGE_REQUESTS')
+      );
+      
+      allow delete: if hasPermission('MANAGE_REQUESTS') || (isAuthenticated() && resource.data.traveler.id == request.auth.uid && resource.data.status == 'REQUESTED');
+    }
+    
+    match /admins/{adminId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner() || hasPermission('MANAGE_ADMINS'); 
+      allow update: if isOwner() || 
+                       (isAdmin() && request.auth.uid == adminId && request.resource.data.role == resource.data.role) ||
+                       (hasPermission('MANAGE_ADMINS') && resource.data.role != 'OWNER' && request.resource.data.role != 'OWNER');
+      allow delete: if isOwner() && request.auth.uid != adminId;
+    }
+
+    match /audit_logs/{logId} {
+      allow read: if hasPermission('VIEW_AUDIT');
+      allow create: if isAdmin();
+      allow update, delete: if false;
+    }
+    
+    match /{document=**} {
+      allow read, write: if isOwner();
+    }
+  }
+}

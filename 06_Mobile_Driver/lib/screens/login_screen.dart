@@ -1,0 +1,182 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nasuba_driver_app/providers/auth_provider.dart';
+import 'package:nasuba_driver_app/screens/driver_screen.dart';
+
+class LoginScreen extends ConsumerStatefulWidget {
+  const LoginScreen({super.key});
+
+  @override
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends ConsumerState<LoginScreen> {
+  final _phoneController = TextEditingController();
+  final _otpController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  
+  bool _isOtpSent = false;
+
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    _otpController.dispose();
+    super.dispose();
+  }
+
+  void _sendOtp() {
+    if (_formKey.currentState!.validate()) {
+      final phone = '+229${_phoneController.text.trim()}';
+      ref.read(authProvider.notifier).verifyPhone(phone);
+    }
+  }
+
+  void _verifyOtp() {
+    if (_otpController.text.length == 6) {
+      ref.read(authProvider.notifier).verifyOTP(_otpController.text.trim());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final authState = ref.watch(authProvider);
+    
+    ref.listen<AsyncValue<void>>(authProvider, (previous, next) {
+      next.whenOrNull(
+        error: (err, stack) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(err.toString()), backgroundColor: Colors.red),
+          );
+          setState(() {
+            _isOtpSent = false;
+          });
+        },
+        data: (_) {
+          final user = ref.read(authStateProvider).value;
+          if (user == null) {
+            setState(() {
+              _isOtpSent = true;
+            });
+          }
+          // Si user != null, main.dart s'occupe de changer l'écran via le Provider
+        },
+      );
+    });
+
+    final isLoading = authState.isLoading;
+
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 60),
+              Text(
+                _isOtpSent ? 'Code de vérification' : 'Portail Chauffeur',
+                style: Theme.of(context).textTheme.displayLarge,
+              ),
+              if (!_isOtpSent)
+                Text(
+                  'NASUBA',
+                  style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                    color: Theme.of(context).primaryColor,
+                  ),
+                ),
+              const SizedBox(height: 16),
+              Text(
+                _isOtpSent 
+                  ? 'Entrez le code à 6 chiffres envoyé au +229 ${_phoneController.text}'
+                  : 'Saisissez votre numéro pour vous connecter',
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+              const SizedBox(height: 48),
+              
+              Form(
+                key: _formKey,
+                child: _isOtpSent ? _buildOtpInput() : _buildPhoneInput(),
+              ),
+              
+              const SizedBox(height: 32),
+              
+              ElevatedButton(
+                onPressed: isLoading 
+                  ? null 
+                  : (_isOtpSent ? _verifyOtp : _sendOtp),
+                child: isLoading
+                    ? const SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                    : Text(_isOtpSent ? 'Vérifier' : 'Continuer'),
+              ),
+              const SizedBox(height: 16),
+              // TEMPORAIRE POUR LE DEVELOPPEMENT :
+              TextButton(
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const DriverScreen()),
+                  );
+                },
+                child: const Text('🔧 Forcer l\'accès (Mode Dev)', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhoneInput() {
+    return TextFormField(
+      controller: _phoneController,
+      keyboardType: TextInputType.phone,
+      style: const TextStyle(fontSize: 18, letterSpacing: 1.5),
+      decoration: InputDecoration(
+        labelText: 'Numéro de téléphone',
+        prefixIcon: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('🇧🇯', style: TextStyle(fontSize: 24)),
+              const SizedBox(width: 8),
+              const Text('+229', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(width: 8),
+              Container(width: 1, height: 24, color: Colors.grey),
+            ],
+          ),
+        ),
+        hintText: '01 23 45 67 89',
+      ),
+      validator: (value) {
+        if (value == null || value.isEmpty || value.length < 8) {
+          return 'Le numéro doit contenir au moins 8 chiffres';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildOtpInput() {
+    return TextFormField(
+      controller: _otpController,
+      keyboardType: TextInputType.number,
+      textAlign: TextAlign.center,
+      maxLength: 6,
+      style: const TextStyle(fontSize: 24, letterSpacing: 8.0, fontWeight: FontWeight.bold),
+      decoration: const InputDecoration(
+        hintText: '------',
+        counterText: '',
+      ),
+      onChanged: (val) {
+        if (val.length == 6) {
+          _verifyOtp();
+        }
+      },
+    );
+  }
+}

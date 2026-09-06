@@ -1,0 +1,98 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // =====================================
+    // FONCTIONS D'AUTORISATION
+    // =====================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    
+    // =====================================
+    // VOYAGEURS (users)
+    // =====================================
+    match /users/{userId} {
+      // Un voyageur peut lire et écrire uniquement son propre profil
+      // L'admin peut tout lire et écrire
+      allow read: if isAdmin() || (isAuthenticated() && request.auth.uid == userId);
+      allow write: if isAdmin() || (isAuthenticated() && request.auth.uid == userId);
+    }
+    
+    // =====================================
+    // CHAUFFEURS (drivers)
+    // =====================================
+    match /drivers/{driverId} {
+      // Les chauffeurs ne peuvent voir que leurs propres données
+      // L'admin gère tout
+      allow read: if isAdmin() || (isAuthenticated() && request.auth.uid == driverId);
+      allow write: if isAdmin() || (isAuthenticated() && request.auth.uid == driverId);
+    }
+    
+    // =====================================
+    // CHAUFFEURS EN LIGNE (active_drivers)
+    // =====================================
+    match /active_drivers/{driverId} {
+      // N'importe quel utilisateur connecté (Voyageur ou Chauffeur) peut voir la position des chauffeurs en ligne
+      allow read: if isAuthenticated();
+      // Seul le chauffeur concerné ou l'admin peut mettre à jour sa position
+      allow write: if isAdmin() || (isAuthenticated() && request.auth.uid == driverId);
+    }
+    
+    // =====================================
+    // DEMANDES DE COURSES (rides)
+    // =====================================
+    match /rides/{rideId} {
+      // L'admin voit tout
+      // Le voyageur voit SA course
+      // Le chauffeur voit SA course ET les courses "PENDING" ou "SEARCHING"
+      allow read: if isAdmin() 
+                  || (isAuthenticated() && resource.data.traveler.id == request.auth.uid)
+                  || (isAuthenticated() && (resource.data.status == 'PENDING' || resource.data.status == 'SEARCHING' || resource.data.driver.id == request.auth.uid));
+      
+      // CRITIQUE : Seul le BACKEND ou l'ADMIN peut MODIFIER le statut de la course ou l'accepter.
+      // Le backend (qui utilise le SDK Admin) contourne ces règles.
+      // Donc, depuis l'application mobile, AUCUNE ÉCRITURE n'est permise (sauf via l'API)
+      allow create: if isAdmin(); // Le Voyageur passe par POST /api/rides/request
+      allow update: if isAdmin(); // Le Chauffeur passe par POST /api/rides/accept et update_state
+      allow delete: if isAdmin();
+    }
+
+    // =====================================
+    // VÉHICULES ET DEVIS (vehicles, quotes)
+    // =====================================
+    match /vehicles/{vehicleId} {
+      allow read, write: if isAdmin() || (isAuthenticated() && resource.data.driverId == request.auth.uid);
+      allow create: if isAuthenticated();
+    }
+    
+    match /quotes/{quoteId} {
+      allow read, write: if isAdmin() || (isAuthenticated() && resource.data.driverId == request.auth.uid);
+      allow create: if isAuthenticated();
+    }
+
+    // =====================================
+    // INFRASTRUCTURES (infrastructures)
+    // =====================================
+    match /infrastructures/{infraId} {
+      // Tout le monde peut lire la carte (même hors ligne ou sans compte)
+      allow read: if true;
+      // Seul l'admin (ou le backend d'import) peut écrire
+      allow write: if isAdmin();
+    }
+    
+    // =====================================
+    // ADMINS (admins)
+    // =====================================
+    match /admins/{adminId} {
+      // Seuls les admins peuvent lire. Personne ne peut écrire depuis le client,
+      // sauf le compte principal lors du setup qui passe par l'API backend.
+      allow read: if isAdmin() || (isAuthenticated() && request.auth.uid == adminId);
+      allow write: if false; // Toujours via API (sauf ajout manuel via Firebase Console)
+    }
+
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "859886456767",
+    "firebase_url": "https://nasuba-voyage-default-rtdb.firebaseio.com",
+    "project_id": "nasuba-voyage",
+    "storage_bucket": "nasuba-voyage.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:859886456767:android:60b8503522957304ac9b0a",
+        "android_client_info": {
+          "package_name": "com.nasuba.nasuba_voyage_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBoR4uYE7w19INleIferflwvISNxJcjsvY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

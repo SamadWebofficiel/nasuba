@@ -1,0 +1,29 @@
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "database": {
+    "rules": "database.rules.json"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "nasuba-voyage",
+          "appId": "1:859886456767:android:60b8503522957304ac9b0a",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "nasuba-voyage",
+          "configurations": {
+            "android": "1:859886456767:android:60b8503522957304ac9b0a",
+            "ios": "1:859886456767:ios:4723f1de01c65af3ac9b0a",
+            "web": "1:859886456767:web:92896765f84b6ffcac9b0a"
+          }
+        }
+      }
+    }
+  }
+}

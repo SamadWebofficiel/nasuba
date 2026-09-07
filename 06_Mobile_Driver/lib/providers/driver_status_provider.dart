@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../config/api_config.dart';
 import 'location_provider.dart';
 
 final currentRideProvider = StateProvider<Map<String, dynamic>?>((ref) => null);
@@ -114,7 +115,7 @@ class DriverStatusNotifier extends StateNotifier<AsyncValue<bool>> {
     
     try {
       final token = await user.getIdToken();
-      final apiUrl = dotenv.env['API_URL'] ?? 'http://10.0.2.2:3000';
+      final apiUrl = ApiConfig.baseUrl;
 
       final response = await http.post(
         Uri.parse('$apiUrl/api/rides/accept'),
@@ -149,7 +150,7 @@ class DriverStatusNotifier extends StateNotifier<AsyncValue<bool>> {
       if (user == null) throw 'Utilisateur non connecté';
 
       final token = await user.getIdToken();
-      final apiUrl = dotenv.env['API_URL'] ?? 'http://10.0.2.2:3000';
+      final apiUrl = ApiConfig.baseUrl;
       
       final stateToUpdate = newStatus == 'TRIP_COMPLETED' ? 'COMPLETED' : newStatus;
 

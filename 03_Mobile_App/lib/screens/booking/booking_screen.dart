@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../../config/api_config.dart';
 import 'active_ride_screen.dart';
 
 class BookingScreen extends StatefulWidget {
@@ -51,8 +52,7 @@ class _BookingScreenState extends State<BookingScreen> {
       if (user == null) throw 'Veuillez vous connecter pour commander une course.';
       
       final token = await user.getIdToken();
-      // By default points to standard local API if not set in .env
-      final apiUrl = dotenv.env['API_URL'] ?? 'http://10.0.2.2:3000';
+      final apiUrl = ApiConfig.baseUrl;
       
       final response = await http.post(
         Uri.parse('$apiUrl/api/rides/request'),

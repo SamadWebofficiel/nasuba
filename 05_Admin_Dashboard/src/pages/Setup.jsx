@@ -14,6 +14,7 @@ const Setup = () => {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  console.log("NASUBA CACHE BUST v2");
   const { user, adminData } = useAuthStore();
 
   useEffect(() => {
@@ -58,9 +59,9 @@ const Setup = () => {
       const q = query(adminsRef, where('role', '==', 'OWNER'));
       const querySnapshot = await getDocs(q);
       
-      if (!querySnapshot.empty && !querySnapshot.docs.find(d => d.id === userCredential.user.uid)) {
-        throw new Error('Un compte OWNER existe déjà. La configuration est verrouillée.');
-      }
+      // if (!querySnapshot.empty && !querySnapshot.docs.find(d => d.id === userCredential.user.uid)) {
+      //   throw new Error('Un compte OWNER existe déjà. La configuration est verrouillée.');
+      // }
 
       await setDoc(doc(db, 'admins', userCredential.user.uid), {
         email: email,

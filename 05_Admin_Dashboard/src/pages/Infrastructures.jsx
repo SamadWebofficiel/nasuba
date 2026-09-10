@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../firebase';
+import { db } from '../config/firebase';
 import { collection, getDocs, deleteDoc, doc, addDoc, updateDoc } from 'firebase/firestore';
 
 function Infrastructures() {

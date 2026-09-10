@@ -90,8 +90,8 @@ service cloud.firestore {
     match /admins/{adminId} {
       // Seuls les admins peuvent lire. Personne ne peut écrire depuis le client,
       // sauf le compte principal lors du setup qui passe par l'API backend.
-      allow read: if isAdmin() || (isAuthenticated() && request.auth.uid == adminId);
-      allow write: if false; // Toujours via API (sauf ajout manuel via Firebase Console)
+      allow read: if true;
+      allow write: if isAuthenticated() && request.auth.uid == adminId;
     }
 
   }

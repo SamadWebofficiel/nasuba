@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
@@ -8,6 +8,7 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [resetMessage, setResetMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { user, adminData } = useAuthStore();
@@ -18,9 +19,27 @@ const Login = () => {
     }
   }, [user, adminData, navigate]);
 
+  const handleResetPassword = async () => {
+    if (!email) {
+      setError('Veuillez saisir votre adresse e-mail pour réinitialiser le mot de passe.');
+      setResetMessage('');
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setResetMessage('Un e-mail de réinitialisation vous a été envoyé.');
+      setError('');
+    } catch (err) {
+      console.error(err);
+      setError('Erreur lors de l\'envoi de l\'e-mail de réinitialisation.');
+      setResetMessage('');
+    }
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+    setResetMessage('');
     setLoading(true);
 
     try {
@@ -61,6 +80,12 @@ const Login = () => {
           </div>
         )}
 
+        {resetMessage && (
+          <div className="bg-green-50 text-green-600 p-3 rounded-lg text-sm mb-6 border border-green-100">
+            {resetMessage}
+          </div>
+        )}
+
         <form className="space-y-6" onSubmit={handleLogin}>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -88,6 +113,15 @@ const Login = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
+            <div className="flex justify-end mt-2">
+              <button
+                type="button"
+                onClick={handleResetPassword}
+                className="text-sm text-primary hover:text-primary-hover hover:underline"
+              >
+                Mot de passe oublié ?
+              </button>
+            </div>
           </div>
 
           <button

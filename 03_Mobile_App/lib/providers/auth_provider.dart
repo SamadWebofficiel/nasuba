@@ -39,14 +39,26 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
     try {
       await _auth.verifyPhoneNumber(
         phoneNumber: phoneNumber,
+        timeout: const Duration(seconds: 60),
         verificationCompleted: (PhoneAuthCredential credential) async {
+          print('✅ Verification automatique complétée.');
           await _auth.signInWithCredential(credential);
           state = const AsyncValue.data(null);
         },
         verificationFailed: (FirebaseAuthException e) {
-          state = AsyncValue.error(e, StackTrace.current);
+          print('❌ ERREUR FIREBASE AUTH: ${e.code} - ${e.message}');
+          String errorMessage = 'Erreur: ${e.message}';
+          if (e.code == 'invalid-phone-number') {
+            errorMessage = 'Le format du numéro de téléphone est invalide.';
+          } else if (e.code == 'too-many-requests') {
+            errorMessage = 'Trop de tentatives. Veuillez réessayer plus tard.';
+          } else if (e.code == 'quota-exceeded') {
+            errorMessage = 'Quota de SMS dépassé pour ce projet.';
+          }
+          state = AsyncValue.error(errorMessage, StackTrace.current);
         },
         codeSent: (String verificationId, int? resendToken) {
+          print('✅ CODE ENVOYÉ ! verificationId: $verificationId');
           _verificationId = verificationId;
           state = const AsyncValue.data(null);
         },

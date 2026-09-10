@@ -1,0 +1,103 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+
+class MapService {
+  static const String apiKey = "AIzaSyBoR4uYE7w19INleIferflwvISNxJcjsvY";
+
+  // Decode polyline string from Google Directions API
+  static List<LatLng> decodePolyline(String encoded) {
+    List<LatLng> polyline = [];
+    int index = 0, len = encoded.length;
+    int lat = 0, lng = 0;
+
+    while (index < len) {
+      int b, shift = 0, result = 0;
+      do {
+        b = encoded.codeUnitAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+      lat += dlat;
+
+      shift = 0;
+      result = 0;
+      do {
+        b = encoded.codeUnitAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+      lng += dlng;
+
+      polyline.add(LatLng((lat / 1E5).toDouble(), (lng / 1E5).toDouble()));
+    }
+    return polyline;
+  }
+
+  // Get Directions between two points
+  static Future<Map<String, dynamic>?> getDirections(LatLng origin, LatLng destination) async {
+    final String url = 'https://maps.googleapis.com/maps/api/directions/json?origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&key=$apiKey';
+    
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['routes'].isNotEmpty) {
+          final route = data['routes'][0];
+          final leg = route['legs'][0];
+          return {
+            'polyline': decodePolyline(route['overview_polyline']['points']),
+            'distance': leg['distance']['text'],
+            'duration': leg['duration']['text'],
+            'end_address': leg['end_address'],
+          };
+        }
+      }
+    } catch (e) {
+      print('Erreur Directions API: $e');
+    }
+    return null;
+  }
+
+  // Search Places using Places API Autocomplete
+  static Future<List<dynamic>> searchPlaces(String query) async {
+    if (query.isEmpty) return [];
+    
+    // Using autocomplete to get predictions
+    final String url = 'https://maps.googleapis.com/maps/api/place/autocomplete/json?input=$query&components=country:bj&key=$apiKey';
+    
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['status'] == 'OK') {
+          return data['predictions'];
+        }
+      }
+    } catch (e) {
+      print('Erreur Places API: $e');
+    }
+    return [];
+  }
+
+  // Get Place Details (to get LatLng from place_id)
+  static Future<LatLng?> getPlaceDetails(String placeId) async {
+    final String url = 'https://maps.googleapis.com/maps/api/place/details/json?place_id=$placeId&fields=geometry&key=$apiKey';
+    
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['status'] == 'OK') {
+          final location = data['result']['geometry']['location'];
+          return LatLng(location['lat'], location['lng']);
+        }
+      }
+    } catch (e) {
+      print('Erreur Place Details API: $e');
+    }
+    return null;
+  }
+}

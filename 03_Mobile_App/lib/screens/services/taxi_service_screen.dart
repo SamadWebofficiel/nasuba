@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nasuba_voyage_mobile/providers/location_provider.dart';
 import 'package:nasuba_voyage_mobile/providers/ride_provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:nasuba_voyage_mobile/services/map_service.dart';
 
 class TaxiServiceScreen extends ConsumerStatefulWidget {
   const TaxiServiceScreen({super.key});
@@ -16,6 +17,12 @@ class _TaxiServiceScreenState extends ConsumerState<TaxiServiceScreen> {
   GoogleMapController? mapController;
   final LatLng _center = const LatLng(9.3496, 2.6180); // Centre du Bénin
   final Set<Marker> _markers = {};
+  final Set<Polyline> _polylines = {};
+  LatLng? _destination;
+  
+  final TextEditingController _searchController = TextEditingController();
+  List<dynamic> _placePredictions = [];
+  bool _isSearching = false;
 
   @override
   void initState() {
@@ -27,12 +34,12 @@ class _TaxiServiceScreenState extends ConsumerState<TaxiServiceScreen> {
     FirebaseFirestore.instance.collection('active_drivers').snapshots().listen((snapshot) {
       if (mounted) {
         setState(() {
-          _markers.clear();
+          _markers.removeWhere((m) => m.markerId.value.startsWith('driver_'));
           for (var doc in snapshot.docs) {
             var driver = doc.data();
             _markers.add(
               Marker(
-                markerId: MarkerId(doc.id),
+                markerId: MarkerId('driver_${doc.id}'),
                 position: LatLng(driver['lat'], driver['lng']),
                 icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
                 infoWindow: const InfoWindow(title: 'Chauffeur NASUBA'),
@@ -46,6 +53,74 @@ class _TaxiServiceScreenState extends ConsumerState<TaxiServiceScreen> {
 
   void _onMapCreated(GoogleMapController controller) {
     mapController = controller;
+  }
+  
+  Future<void> _searchPlaces(String query) async {
+    if (query.length < 3) {
+      setState(() => _placePredictions = []);
+      return;
+    }
+    setState(() => _isSearching = true);
+    final results = await MapService.searchPlaces(query);
+    setState(() {
+      _placePredictions = results;
+      _isSearching = false;
+    });
+  }
+  
+  Future<void> _selectPlace(String placeId, String description) async {
+    FocusScope.of(context).unfocus();
+    _searchController.text = description;
+    setState(() => _placePredictions = []);
+    
+    final latLng = await MapService.getPlaceDetails(placeId);
+    if (latLng != null) {
+      setState(() {
+        _destination = latLng;
+        _markers.removeWhere((m) => m.markerId.value == 'destination');
+        _markers.add(
+          Marker(
+            markerId: const MarkerId('destination'),
+            position: latLng,
+            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+            infoWindow: const InfoWindow(title: 'Destination'),
+          )
+        );
+      });
+      _drawRoute();
+    }
+  }
+
+  Future<void> _drawRoute() async {
+    final pos = ref.read(locationProvider).value;
+    if (pos == null || _destination == null) return;
+    
+    final origin = LatLng(pos.latitude, pos.longitude);
+    final result = await MapService.getDirections(origin, _destination!);
+    
+    if (result != null) {
+      setState(() {
+        _polylines.clear();
+        _polylines.add(
+          Polyline(
+            polylineId: const PolylineId('route'),
+            points: result['polyline'],
+            color: const Color(0xFF0F62FE),
+            width: 5,
+          )
+        );
+      });
+      
+      if (mapController != null) {
+        LatLngBounds bounds;
+        if (origin.latitude > _destination!.latitude) {
+          bounds = LatLngBounds(southwest: _destination!, northeast: origin);
+        } else {
+          bounds = LatLngBounds(southwest: origin, northeast: _destination!);
+        }
+        mapController!.animateCamera(CameraUpdate.newLatLngBounds(bounds, 50));
+      }
+    }
   }
 
   Widget _buildRideStatusPanel(Map<String, dynamic> rideData) {
@@ -147,19 +222,21 @@ class _TaxiServiceScreenState extends ConsumerState<TaxiServiceScreen> {
     final locationState = ref.watch(locationProvider);
     final rideState = ref.watch(rideProvider);
     
-    // Si la position est acquise, animer la carte
-    locationState.whenData((position) {
-      if (position != null && mapController != null) {
-        mapController!.animateCamera(
-          CameraUpdate.newCameraPosition(
-            CameraPosition(
-              target: LatLng(position.latitude, position.longitude),
-              zoom: 15.0,
+    // Animer si pas de destination définie
+    if (_destination == null) {
+      locationState.whenData((position) {
+        if (position != null && mapController != null) {
+          mapController!.animateCamera(
+            CameraUpdate.newCameraPosition(
+              CameraPosition(
+                target: LatLng(position.latitude, position.longitude),
+                zoom: 15.0,
+              ),
             ),
-          ),
-        );
-      }
-    });
+          );
+        }
+      });
+    }
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -168,24 +245,6 @@ class _TaxiServiceScreenState extends ConsumerState<TaxiServiceScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10),
-              ],
-            ),
-            child: IconButton(
-              icon: Icon(Icons.person, color: Theme.of(context).primaryColor),
-              onPressed: () {
-                // TODO: Profil
-              },
-            ),
-          ),
-        ],
       ),
       body: Stack(
         children: [
@@ -199,6 +258,7 @@ class _TaxiServiceScreenState extends ConsumerState<TaxiServiceScreen> {
               zoom: 6.0,
             ),
             markers: _markers,
+            polylines: _polylines,
           ),
           
           // Search Bar Floater
@@ -206,25 +266,66 @@ class _TaxiServiceScreenState extends ConsumerState<TaxiServiceScreen> {
             top: 100,
             left: 24,
             right: 24,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 4)),
-                ],
-              ),
-              child: TextField(
-                decoration: InputDecoration(
-                  hintText: 'Où allons-nous ?',
-                  prefixIcon: Icon(Icons.search, color: Theme.of(context).primaryColor),
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  filled: false,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 16),
+            child: Column(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 4)),
+                    ],
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: _searchPlaces,
+                    decoration: InputDecoration(
+                      hintText: 'Où allons-nous ?',
+                      prefixIcon: Icon(Icons.search, color: Theme.of(context).primaryColor),
+                      suffixIcon: _isSearching ? const Padding(
+                        padding: EdgeInsets.all(12.0),
+                        child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                      ) : IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {
+                            _placePredictions = [];
+                            _destination = null;
+                            _polylines.clear();
+                            _markers.removeWhere((m) => m.markerId.value == 'destination');
+                          });
+                        },
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                  ),
                 ),
-              ),
+                if (_placePredictions.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
+                    ),
+                    constraints: const BoxConstraints(maxHeight: 250),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _placePredictions.length,
+                      itemBuilder: (context, index) {
+                        final place = _placePredictions[index];
+                        return ListTile(
+                          leading: const Icon(Icons.location_on, color: Colors.grey),
+                          title: Text(place['structured_formatting']['main_text']),
+                          subtitle: Text(place['structured_formatting']['secondary_text'] ?? ''),
+                          onTap: () => _selectPlace(place['place_id'], place['description']),
+                        );
+                      },
+                    ),
+                  )
+              ],
             ),
           ),
           
@@ -284,7 +385,9 @@ class _TaxiServiceScreenState extends ConsumerState<TaxiServiceScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Trouvez un chauffeur fiable en un clic.',
+                          _destination == null 
+                              ? 'Trouvez un chauffeur fiable en un clic.'
+                              : 'Trajet sélectionné. Commandez votre NASUBA.',
                           style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                         ),
                         const SizedBox(height: 24),
@@ -292,6 +395,12 @@ class _TaxiServiceScreenState extends ConsumerState<TaxiServiceScreen> {
                           onPressed: () {
                             final pos = locationState.value;
                             if (pos != null) {
+                              if (_destination == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Veuillez rechercher une destination d\'abord.')),
+                                );
+                                return;
+                              }
                               ref.read(rideProvider.notifier).requestRide(pos);
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(

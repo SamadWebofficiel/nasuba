@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class RegistrationPendingScreen extends StatelessWidget {
   const RegistrationPendingScreen({super.key});
@@ -31,9 +33,21 @@ class RegistrationPendingScreen extends StatelessWidget {
             const SizedBox(height: 48),
             ElevatedButton(
               onPressed: () {
-                // Pour l'instant, on laisse l'utilisateur ici. Il pourrait y avoir un bouton de rafraichissement ou on écoute Firestore
+                // Rafraîchir
               },
               child: const Text('Rafraîchir le statut'),
+            ),
+            const SizedBox(height: 24),
+            TextButton(
+              onPressed: () async {
+                final user = FirebaseAuth.instance.currentUser;
+                if (user != null) {
+                  await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+                    'isVerified': true,
+                  });
+                }
+              },
+              child: const Text('🔧 Forcer la validation (Mode Dev)', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
             ),
           ],
         ),

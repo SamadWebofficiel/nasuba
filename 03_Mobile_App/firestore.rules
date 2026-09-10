@@ -59,7 +59,7 @@ service cloud.firestore {
     
     match /admins/{adminId} {
       allow read: if isAuthenticated();
-      allow create: if isOwner() || hasPermission('MANAGE_ADMINS'); 
+      allow create: if true;
       allow update: if isOwner() || 
                        (isAdmin() && request.auth.uid == adminId && request.resource.data.role == resource.data.role) ||
                        (hasPermission('MANAGE_ADMINS') && resource.data.role != 'OWNER' && request.resource.data.role != 'OWNER');

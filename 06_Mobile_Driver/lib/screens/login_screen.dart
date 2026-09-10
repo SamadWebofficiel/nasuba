@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nasuba_driver_app/providers/auth_provider.dart';
@@ -16,17 +17,45 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   
   bool _isOtpSent = false;
+  Timer? _timer;
+  int _start = 60;
 
   @override
   void dispose() {
+    _timer?.cancel();
     _phoneController.dispose();
     _otpController.dispose();
     super.dispose();
   }
 
+  void _startTimer() {
+    _start = 60;
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (Timer timer) {
+      if (_start == 0) {
+        setState(() {
+          timer.cancel();
+        });
+      } else {
+        setState(() {
+          _start--;
+        });
+      }
+    });
+  }
+
+  void _resendOtp() {
+    setState(() {
+      _isOtpSent = false;
+      _otpController.clear();
+    });
+    _sendOtp();
+  }
+
   void _sendOtp() {
     if (_formKey.currentState!.validate()) {
-      final phone = '+229${_phoneController.text.trim()}';
+      final rawPhone = _phoneController.text.replaceAll(' ', '');
+      final phone = '+229$rawPhone';
       ref.read(authProvider.notifier).verifyPhone(phone);
     }
   }
@@ -57,6 +86,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             setState(() {
               _isOtpSent = true;
             });
+            _startTimer();
           }
           // Si user != null, main.dart s'occupe de changer l'écran via le Provider
         },
@@ -112,6 +142,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       )
                     : Text(_isOtpSent ? 'Vérifier' : 'Continuer'),
               ),
+              
+              if (_isOtpSent)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16.0),
+                  child: Center(
+                    child: _start > 0
+                        ? Text('Renvoyer le code dans $_start s', style: const TextStyle(color: Colors.grey))
+                        : TextButton(
+                            onPressed: _resendOtp,
+                            child: const Text('Renvoyer le code', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                  ),
+                ),
               const SizedBox(height: 16),
               // TEMPORAIRE POUR LE DEVELOPPEMENT :
               TextButton(
@@ -153,7 +196,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         hintText: '01 23 45 67 89',
       ),
       validator: (value) {
-        if (value == null || value.isEmpty || value.length < 8) {
+        if (value == null || value.isEmpty || value.replaceAll(' ', '').length < 8) {
           return 'Le numéro doit contenir au moins 8 chiffres';
         }
         return null;

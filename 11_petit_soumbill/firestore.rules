@@ -1,0 +1,56 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Règle générale : bloquer tout accès par défaut
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- COLLECTION PRODUCTS ---
+    match /products/{productId} {
+      // Tout le monde peut lire le catalogue
+      allow read: if true;
+      
+      // Seul l'admin connecté peut créer, supprimer, ou modifier librement
+      allow create, delete: if request.auth != null;
+      allow update: if request.auth != null || (
+        // Un utilisateur anonyme peut décrémenter le stock lors d'une commande
+        request.auth == null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock', 'updatedAt'])
+        && request.resource.data.stock >= 0
+        && request.resource.data.stock < resource.data.stock
+      );
+    }
+
+    // --- COLLECTION ORDERS ---
+    match /orders/{orderId} {
+      // L'admin peut tout lire et tout écrire
+      allow read, update, delete: if request.auth != null;
+      
+      // Les clients ne peuvent que CREER une nouvelle commande, avec le statut "Nouvelle"
+      allow create: if request.auth == null
+                    && request.resource.data.status == 'Nouvelle'
+                    && request.resource.data.keys().hasAll(['orderNumber', 'customerName', 'customerPhone', 'products', 'total', 'status']);
+    }
+
+    // --- COLLECTION CATEGORIES ---
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // --- COLLECTION VIDEOS ---
+    match /videos/{videoId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // --- COLLECTION PARAMÈTRES (SETTINGS) ---
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}

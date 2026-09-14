@@ -6,6 +6,7 @@ import useCartStore from '../store/cartStore';
 
 export default function Header() {
   const [mounted, setMounted] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const totalItems = useCartStore((state) => state.getTotalItems());
 
   useEffect(() => {
@@ -17,7 +18,11 @@ export default function Header() {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         
         {/* Mobile Menu Button */}
-        <button className="md:hidden p-2 -ml-2 text-foreground focus:outline-none" aria-label="Menu">
+        <button 
+          className="md:hidden p-2 -ml-2 text-foreground focus:outline-none" 
+          aria-label="Menu"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
             <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
           </svg>
@@ -50,6 +55,16 @@ export default function Header() {
         </Link>
 
       </div>
+
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <nav className="md:hidden border-t border-primary/10 bg-background px-4 py-4 space-y-4 shadow-lg absolute w-full left-0 right-0 z-40">
+          <Link href="/" onClick={() => setMobileMenuOpen(false)} className="block font-medium hover:text-primary">Accueil</Link>
+          <Link href="/boutique" onClick={() => setMobileMenuOpen(false)} className="block font-medium hover:text-primary">Boutique</Link>
+          <Link href="/nouveautes" onClick={() => setMobileMenuOpen(false)} className="block font-medium hover:text-primary">Nouveautés</Link>
+          <Link href="/contact" onClick={() => setMobileMenuOpen(false)} className="block font-medium hover:text-primary">Notre Boutique</Link>
+        </nav>
+      )}
     </header>
   );
 }

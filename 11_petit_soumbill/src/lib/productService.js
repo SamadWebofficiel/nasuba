@@ -28,7 +28,7 @@ export async function getProducts(forceRefresh = false) {
             price: 0,
             stock: 10,
             isAvailable: true,
-            images: ["/images/products/authentic.png"],
+            images: ["/images/products/perfume_1.jpg"],
             description: "Un parfum authentique pour homme.",
           },
           {
@@ -39,7 +39,7 @@ export async function getProducts(forceRefresh = false) {
             price: 0,
             stock: 10,
             isAvailable: true,
-            images: ["/images/products/black_leather.png"],
+            images: ["/images/products/perfume_2.jpg"],
             description: "Eau de parfum pour homme.",
           },
           {
@@ -50,7 +50,7 @@ export async function getProducts(forceRefresh = false) {
             price: 0,
             stock: 10,
             isAvailable: true,
-            images: ["/images/products/charuto.png"],
+            images: ["/images/products/perfume_3.jpg"],
             description: "Un mélange riche de tabac et de vanille.",
           },
           {
@@ -61,7 +61,7 @@ export async function getProducts(forceRefresh = false) {
             price: 0,
             stock: 10,
             isAvailable: true,
-            images: ["/images/products/suave.png"],
+            images: ["/images/products/perfume_4.jpg"],
             description: "L'élixir de la séduction.",
           },
           {
@@ -72,7 +72,7 @@ export async function getProducts(forceRefresh = false) {
             price: 0,
             stock: 10,
             isAvailable: true,
-            images: ["/images/products/intense_wayfarer.png"],
+            images: ["/images/products/perfume_5.jpg"],
             description: "Une fragrance intense pour l'homme moderne.",
           }
         );

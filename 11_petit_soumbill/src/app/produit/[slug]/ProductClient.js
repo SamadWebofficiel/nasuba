@@ -11,6 +11,7 @@ import { getProducts } from "../../../lib/productService";
 export default function ProductClient({ product, shopName }) {
   const addItem = useCartStore((state) => state.addItem);
   const [showToast, setShowToast] = useState(false);
+  const [isZoomed, setIsZoomed] = useState(false);
   const [produit] = useState(product);
   const [similarProducts, setSimilarProducts] = useState([]);
   
@@ -133,14 +134,21 @@ export default function ProductClient({ product, shopName }) {
                   className="w-full h-full object-contain bg-black"
                 />
               ) : produit.images && produit.images.length > 0 ? (
-                <Image 
-                  src={produit.images[parseInt(activeMedia.split('_')[1]) || 0]} 
-                  alt={produit.name} 
-                  fill
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                  className="object-cover" 
-                  priority
-                />
+                <div className="w-full h-full relative cursor-zoom-in" onClick={() => setIsZoomed(true)}>
+                  <Image 
+                    src={produit.images[parseInt(activeMedia.split('_')[1]) || 0]} 
+                    alt={produit.name} 
+                    fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    className="object-cover" 
+                    priority
+                  />
+                  <div className="absolute bottom-4 right-4 bg-black/50 p-2 rounded-full text-white backdrop-blur-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607ZM10.5 7.5v6m3-3h-6" />
+                    </svg>
+                  </div>
+                </div>
               ) : (
                 <div className="w-1/2 h-2/3 bg-foreground/5 rounded-xl flex items-center justify-center text-black/30">Image</div>
               )}
@@ -360,6 +368,34 @@ export default function ProductClient({ product, shopName }) {
                 Continuer mes achats
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full Screen Image Zoom Modal */}
+      {isZoomed && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md cursor-zoom-out p-4 md:p-12 animate-in fade-in duration-200"
+          onClick={() => setIsZoomed(false)}
+        >
+          <button 
+            className="absolute top-6 right-6 text-white/50 hover:text-white bg-black/50 hover:bg-black rounded-full p-2 transition-all z-10"
+            onClick={(e) => { e.stopPropagation(); setIsZoomed(false); }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+            </svg>
+          </button>
+          
+          <div className="relative w-full h-full max-w-5xl mx-auto flex items-center justify-center">
+            <Image 
+              src={produit.images[parseInt(activeMedia.split('_')[1]) || 0]} 
+              alt={produit.name} 
+              fill
+              className="object-contain" 
+              priority
+              quality={100}
+            />
           </div>
         </div>
       )}

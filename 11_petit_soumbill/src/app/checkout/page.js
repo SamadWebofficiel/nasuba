@@ -152,7 +152,7 @@ export default function Checkout() {
       });
 
       // 2. Construire le message WhatsApp
-      const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "22900000000";
+      const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "2290197320132";
       
       let text = `Bonjour Petit Soumbill Parfumerie,\n\nJe souhaite passer une commande (Réf: *${generatedOrderNumber}*).\n\nProduits :\n`;
       

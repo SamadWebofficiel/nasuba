@@ -93,7 +93,7 @@ export default function ProductClient({ product, shopName }) {
 
   const handleAskAvailability = () => {
     const message = encodeURIComponent(`Bonjour Petit Soumbill Parfumerie,\n\nJe souhaite être informé(e) lorsque ce parfum sera disponible :\n\nProduit : ${produit.name}\n\nMerci.`);
-    const number = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "22900000000";
+    const number = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "2290197320132";
     window.open(`https://wa.me/${number}?text=${message}`, '_blank');
   };
 

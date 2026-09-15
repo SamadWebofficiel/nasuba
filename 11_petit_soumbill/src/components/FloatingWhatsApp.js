@@ -42,7 +42,7 @@ export default function FloatingWhatsApp() {
     return null;
   }
 
-  const number = settings?.whatsapp || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "22900000000";
+  const number = settings?.whatsapp || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "2290197320132";
   const text = encodeURIComponent(message);
   const href = `https://wa.me/${number}?text=${text}`;
 

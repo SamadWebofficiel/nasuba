@@ -18,8 +18,9 @@ async function getProductAndSettings(slug) {
       });
       if (productRes.ok) {
         const data = await productRes.json();
-        if (data.documents) {
-          const products = data.documents.map(doc => {
+        let products = [];
+        if (data.documents && data.documents.length > 0) {
+          products = data.documents.map(doc => {
             const fields = doc.fields || {};
             return {
               id: doc.name.split('/').pop(),
@@ -40,8 +41,70 @@ async function getProductAndSettings(slug) {
               fragranceNotes: fields.fragranceNotes?.arrayValue?.values ? fields.fragranceNotes.arrayValue.values.map(v => v.stringValue) : []
             };
           });
-          product = products.find(p => p.slug === slug);
         }
+        
+        // DUMMY PRODUCTS FALLBACK (same as productService.js)
+        if (products.length === 0) {
+          products = [
+            {
+              id: "dummy_1",
+              name: "Authentic Pour Homme",
+              slug: "authentic-pour-homme",
+              brand: "FW",
+              price: 0,
+              stock: 10,
+              isAvailable: true,
+              images: ["/images/products/perfume_1.jpg"],
+              description: "Un parfum authentique pour homme.",
+            },
+            {
+              id: "dummy_2",
+              name: "Black Leather",
+              slug: "black-leather",
+              brand: "Fragrance World",
+              price: 0,
+              stock: 10,
+              isAvailable: true,
+              images: ["/images/products/perfume_2.jpg"],
+              description: "Eau de parfum pour homme.",
+            },
+            {
+              id: "dummy_3",
+              name: "Charuto Tobacco Vanille",
+              slug: "charuto-tobacco-vanille",
+              brand: "Pendora Scents",
+              price: 0,
+              stock: 10,
+              isAvailable: true,
+              images: ["/images/products/perfume_3.jpg"],
+              description: "Un mélange riche de tabac et de vanille.",
+            },
+            {
+              id: "dummy_4",
+              name: "Suave Elixir",
+              slug: "suave-elixir",
+              brand: "Fragrance World",
+              price: 0,
+              stock: 10,
+              isAvailable: true,
+              images: ["/images/products/perfume_4.jpg"],
+              description: "L'élixir de la séduction.",
+            },
+            {
+              id: "dummy_5",
+              name: "Intense Wayfarer Homme",
+              slug: "intense-wayfarer-homme",
+              brand: "Pendora Scents",
+              price: 0,
+              stock: 10,
+              isAvailable: true,
+              images: ["/images/products/perfume_5.jpg"],
+              description: "Une fragrance intense pour l'homme moderne.",
+            }
+          ];
+        }
+        
+        product = products.find(p => p.slug === slug);
       }
 
       // Fetch Global Settings for Shop Name
